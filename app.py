@@ -71,31 +71,17 @@ uploaded_file = st.file_uploader("Choose image", accept_multiple_files=False, ty
 
 if uploaded_file is not None:
     try:
-        st.write(f"Debug: File name: {uploaded_file.name}")
-        st.write(f"Debug: File type: {uploaded_file.type}")
-        st.write(f"Debug: File size: {uploaded_file.size} bytes")
-
         if st.session_state.reuse_image is not None:
             img_input = Image.fromarray(st.session_state.reuse_image)
-            st.write("Debug: Using reused image")
         else:
             bytes_data = uploaded_file.getvalue()
-            st.write(f"Debug: Bytes data length: {len(bytes_data)}")
             img_input = Image.open(BytesIO(bytes_data)).convert("RGBA")
-            st.write(f"Debug: Image opened successfully. Size: {img_input.size}")
-
-        st.write("Debug: Displaying original image")
-        st.image(img_input, caption="Original Uploaded Image", use_column_width=True)
 
         # Image resize options
         st.subheader("Image Size Settings")
         max_size = st.slider("Max image size", 500, 2000, 2000, 100, 
                              help="Larger sizes may increase processing time but can improve quality.")
         img_input = resize_image(img_input, max_size)
-        st.write(f"Debug: Image resized. New size: {img_input.size}")
-
-        st.write("Debug: Displaying resized image")
-        st.image(img_input, caption="Resized Image", use_column_width=True)
 
         # Brush settings
         st.subheader("Brush Settings")
@@ -113,8 +99,6 @@ if uploaded_file is not None:
         if canvas_bg.width > streamlit_width:
             canvas_bg = canvas_bg.resize((streamlit_width, int(streamlit_width / aspect_ratio)))
         
-        st.write(f"Debug: Canvas size: {canvas_bg.width}x{canvas_bg.height}")
-        
         canvas_result = st_canvas(
             stroke_color=stroke_color,
             stroke_width=stroke_width,
@@ -126,9 +110,7 @@ if uploaded_file is not None:
         )
         
         if canvas_result.image_data is not None:
-            st.write(f"Debug: Canvas image data shape: {canvas_result.image_data.shape}")
             im = np.array(Image.fromarray(canvas_result.image_data.astype(np.uint8)).resize(img_input.size))
-            st.write(f"Debug: Resized canvas image shape: {im.shape}")
             background = np.where(
                 (im[:, :, 0] == 0) & 
                 (im[:, :, 1] == 0) & 
@@ -142,15 +124,9 @@ if uploaded_file is not None:
             im[background] = [0,0,0,255]
             im[drawing] = [0,0,0,0]  # RGBA
             
-            st.write("Debug: Displaying mask")
-            st.image(im, caption="Mask", use_column_width=True)
-            
             if st.button('Remove Text'):
                 with st.spinner("AI is doing the magic!"):
-                    st.write(f"Debug: Input image shape: {np.array(img_input).shape}")
-                    st.write(f"Debug: Mask shape: {im.shape}")
                     output = process_inpaint(np.array(img_input), np.array(im))
-                    st.write(f"Debug: Output shape: {output.shape}")
                     img_output = Image.fromarray(output).convert("RGB")
                     st.session_state.processed_image = img_output
                 
